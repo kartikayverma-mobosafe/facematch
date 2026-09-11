@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtualenv. run.sh / run_api.sh build this on first run.
+.venv/
+venv/
+env/
+
+# Model weights, downloaded on first run into ~/.insightface
+*.onnx
+*.zip
+
+# Vendored insightface source and packaging scratch. It is a pip dependency
+# pinned in requirements.txt; there is no reason to carry 3MB of its source.
+_pkg/
+usersaryandesktoptraccarcompareface_pkg/
+*.tar.gz
+
+# Photographs of real, identifiable people, kept locally for manual testing.
+#
+# Deliberately not published. This repository is public, and a face photograph
+# is biometric data about somebody who did not agree to it being on the
+# internet. Use your own images when running the CLI:
+#   ./run.sh path/to/a.jpg path/to/b.jpg
+face1.jpg
+face2.jpg
+face-1.jpg
+*.jpeg
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Internal design/plan docs from the original build.
+#
+# Left out of the public repo for two reasons: they carry a colleague's work
+# email address, and they describe the first design ("The model is loaded per
+# request, by design") which is no longer how this works — a doc that
+# contradicts the code is worse than no doc. Publish them if you want, once
+# both are fixed.
+docs/

@@ -1,0 +1,37 @@
+# Face match engine, run as a service.
+#
+#   sudo cp facematch.service /etc/systemd/system/facematch.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now facematch
+#   journalctl -u facematch -f
+#
+# Edit User, WorkingDirectory and the two Environment lines before installing.
+[Unit]
+Description=Face match engine (InsightFace buffalo_sc)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mobosafe
+WorkingDirectory=/opt/facematch
+Environment=HOME=/opt/facematch
+# Shared secret the Traccar server must send as X-Api-Key. Leave unset only
+# when the port is bound to localhost.
+Environment=FACE_MATCH_API_KEY=change-me
+
+# One worker on purpose. Each worker is a separate process holding its own
+# ~500MB copy of the model, so workers are how this box runs out of memory.
+# Raise it only after measuring, and only with the RAM to back it.
+ExecStart=/opt/facematch/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 9000 --workers 1
+
+Restart=always
+RestartSec=5
+# The model load at boot takes a while on a cold cache; do not shoot it.
+TimeoutStartSec=300
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
