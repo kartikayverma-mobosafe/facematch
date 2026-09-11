@@ -1,7 +1,8 @@
-# Headless OpenCV: this only ever decodes image bytes, never displays a window.
-# The headless wheel drops the GUI/Qt bundle, which is a smaller install and one
-# less reason to need libGL on a server.
-opencv-python-headless
+# Direct dependencies. Versions float here; requirements.lock.txt carries the
+# exact set verified on the server, and is what a deployment should install.
+#
+# opencv is not listed: insightface depends on opencv-python itself, and naming
+# it here as well only risks pulling in a second, conflicting copy.
 numpy
 onnxruntime
 insightface

@@ -21,9 +21,16 @@ Environment=HOME=/opt/facematch
 Environment=FACE_MATCH_API_KEY=change-me
 
 # One worker on purpose. Each worker is a separate process holding its own
-# ~500MB copy of the model, so workers are how this box runs out of memory.
+# ~195MB copy of the model, so workers are how a small box runs out of memory.
 # Raise it only after measuring, and only with the RAM to back it.
-ExecStart=/opt/facematch/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 9000 --workers 1
+#
+# Port 9100, not the 9000 the scripts default to: 9000 is a common default and
+# was already taken by something else on the first box this was deployed to.
+ExecStart=/opt/facematch/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 9100 --workers 1
+
+# Bounded so that if this ever does grow, the kernel reclaims inside this unit
+# instead of reaching for whatever else is on the box. Measured peak is ~195MB.
+MemoryMax=700M
 
 Restart=always
 RestartSec=5

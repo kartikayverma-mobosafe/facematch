@@ -34,11 +34,30 @@ redoing.
 For a real deployment use `facematch.service` instead, which binds to
 localhost and sets the shared secret.
 
+## Installing
+
+```bash
+git clone https://github.com/kartikayverma-mobosafe/facematch.git /opt/facematch
+cd /opt/facematch
+python3 -m venv .venv
+.venv/bin/pip install --no-cache-dir -r requirements.lock.txt
+```
+
+Install from `requirements.lock.txt`, not `requirements.txt`. The floating set
+resolves to whatever is current, and insightface has already gone 0.7.3 → 2.0
+under this code once; the lock file is the set actually verified to work.
+
+Needs only Python 3 with `venv` — no compiler, and no system OpenCV libraries.
+
 ## Notes that matter
 
-- **The model is loaded once per process.** It is ~16MB on disk but ~500MB
-  resident, and takes seconds to build. It is warmed at startup so the first
-  request of the day is not the one that pays for it.
+- **The model is loaded once per process**, and warmed at startup so the first
+  request of the morning is not the one that pays for it. It used to be built
+  inside each request handler, which cost seconds of latency per call.
+- **Measured memory: ~195MB resident** (Python 3.12, insightface 2.0,
+  `buffalo_sc`, two phone photographs in flight). The figure of 400-550MB in
+  the original script's docstring was wrong — it is well under a quarter of a
+  gigabyte, which is what makes this practical to co-host.
 - **One worker.** Every extra uvicorn worker is another full copy of the model
   in RAM.
 - **Bind to localhost** and reach it over the SSH tunnel or a private
@@ -46,3 +65,20 @@ localhost and sets the shared secret.
   in front of it — the images on the wire are photographs of employees.
 - First run downloads the model into `~/.insightface`, so the service account
   needs a writable `HOME`.
+
+## Calibrating the threshold
+
+`same_person` is `cosine >= threshold`. Measured on three real photographs of
+two people:
+
+| Pair | Cosine | Score |
+| --- | --- | --- |
+| Same person, two photos | **+0.681** | 84.05% |
+| Different people | +0.169 | 58.47% |
+| Different people | +0.143 | 57.16% |
+
+The gap between a genuine match and a stranger is wide, and a 0.40 threshold
+(a 70% score) sits in the middle of it. Widen or narrow it against your own
+photographs rather than trusting a default — every comparison the HRMS makes
+stores the raw cosine it scored, so the data to do that accumulates from the
+first day.
