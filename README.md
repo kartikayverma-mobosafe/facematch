@@ -9,11 +9,12 @@ employee master.
 
 | Method | Path             | Body                                   | Returns |
 | ------ | ---------------- | -------------------------------------- | ------- |
-| GET    | `/health`        | -                                      | `{status, model, loaded}` |
+| GET    | `/health`        | -                                      | `{status, model, loaded, embed}` |
 | POST   | `/compare`       | multipart: `image1`, `image2`, `threshold` | `{cosine_similarity, similarity_score, threshold, same_person}` |
 | POST   | `/compare/base64`| json: `{image1, image2, threshold}`    | same as above |
 | POST   | `/detect`        | multipart: `image`                     | `{faces, usable, width, height, face_width, face_height}` |
 | POST   | `/detect/base64` | json: `{image}`                        | same as above |
+| POST   | `/embed`         | multipart: `image`                     | `{model, dim, embedding, faces, width, height, face_width, face_height, det_score, kps}` |
 
 `similarity_score` is the cosine similarity rescaled to 0-100 for display:
 `(cosine + 1) / 2 * 100`. `same_person` compares the **cosine** value against
@@ -24,6 +25,26 @@ A photograph with no detectable face is a `400` carrying
 `{"detail": {"code": "no_face_image1" | "no_face_image2", "message": ...}}`, so
 the caller can say whether it is the live shot or the enrolled one that needs
 redoing.
+
+## Embeddings (`/embed`)
+
+Returns the L2-normalised 512-d `buffalo_sc` embedding of the largest face in
+one image, so a caller can store reference embeddings and compare live photos
+by cosine (a plain dot product) without re-sending the reference photograph.
+
+```json
+{"model": "buffalo_sc", "dim": 512, "embedding": [0.01, "... 512 floats"],
+ "faces": 1, "width": 640, "height": 480,
+ "face_width": 210, "face_height": 260, "det_score": 0.93,
+ "kps": [[x, y], [x, y], [x, y], [x, y], [x, y]]}
+```
+
+`faces` is how many faces were detected; the embedding, `face_width/height`,
+`det_score` and `kps` describe the largest. Same `X-Api-Key` auth as the other
+endpoints. Errors: `400 {"detail": {"code": "no_face" | "bad_image", "message"}}`,
+`401` for a bad key. `/health` reports `"embed": true` so callers can tell an
+engine that has this endpoint from an older one. Embeddings from different
+`model` values are not comparable; store `model` alongside each vector.
 
 ## Running it
 

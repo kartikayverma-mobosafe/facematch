@@ -147,6 +147,50 @@ def detect(image_bytes):
     }
 
 
+MODEL_NAME = "buffalo_sc"
+
+
+def embed(image_bytes):
+    """
+    One L2-normalised face embedding for an enrolment photograph.
+
+    Returns the embedding of the largest face plus enough about the image for
+    the caller to gate quality itself: how many faces were seen, how big the
+    largest is, the detector's confidence and the five landmarks. Raises
+    ValueError when the image cannot be decoded or holds no face.
+    """
+    app = get_model()
+    img = decode_image_bytes(image_bytes)
+    faces = _largest_first(app.get(img))
+    if len(faces) == 0:
+        raise ValueError("No face detected in image")
+
+    face = faces[0]
+    vec = np.asarray(face.embedding, dtype=np.float64)
+    norm = np.linalg.norm(vec)
+    if not norm > 0:
+        raise ValueError("No face detected in image")
+    vec = vec / norm
+
+    height, width = img.shape[:2]
+    bbox = face.bbox
+    kps = [] if face.kps is None else [
+        [float(p[0]), float(p[1])] for p in face.kps
+    ]
+    return {
+        "model": MODEL_NAME,
+        "dim": int(vec.shape[0]),
+        "embedding": [float(x) for x in vec],
+        "faces": len(faces),
+        "width": width,
+        "height": height,
+        "face_width": int(bbox[2] - bbox[0]),
+        "face_height": int(bbox[3] - bbox[1]),
+        "det_score": float(face.det_score),
+        "kps": kps,
+    }
+
+
 def run_pair(image1_bytes, image2_bytes, threshold=DEFAULT_THRESHOLD):
     """Compare two images given as raw bytes. Pure function, no I/O side-effects."""
     app = get_model()
