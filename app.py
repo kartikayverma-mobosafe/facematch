@@ -5,7 +5,7 @@ import binascii
 import os
 import secrets
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -28,7 +28,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Face Compare API", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="Face Compare API", version="1.2.0", lifespan=lifespan)
 
 
 class CompareResponse(BaseModel):
@@ -45,6 +45,19 @@ class DetectResponse(BaseModel):
     height: int
     face_width: int
     face_height: int
+
+
+class EmbedResponse(BaseModel):
+    model: str
+    dim: int
+    embedding: List[float]
+    faces: int
+    width: int
+    height: int
+    face_width: int
+    face_height: int
+    det_score: float
+    kps: List[List[float]]
 
 
 class Base64CompareRequest(BaseModel):
@@ -110,7 +123,12 @@ def _fail(e: ValueError) -> HTTPException:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": "buffalo_sc", "loaded": compare_faces.is_loaded()}
+    return {
+        "status": "ok",
+        "model": "buffalo_sc",
+        "loaded": compare_faces.is_loaded(),
+        "embed": True,
+    }
 
 
 @app.post("/compare", response_model=CompareResponse)
@@ -167,5 +185,19 @@ def detect_base64(
     _require_key(x_api_key)
     try:
         return compare_faces.detect(_decode_b64_field(payload.image, "image"))
+    except ValueError as e:
+        raise _fail(e)
+
+
+@app.post("/embed", response_model=EmbedResponse)
+async def embed(
+    image: UploadFile = File(...),
+    x_api_key: Optional[str] = Header(default=None),
+):
+    """L2-normalised face embedding of the largest face, for enrolment."""
+    _require_key(x_api_key)
+    data = await image.read()
+    try:
+        return compare_faces.embed(data)
     except ValueError as e:
         raise _fail(e)
